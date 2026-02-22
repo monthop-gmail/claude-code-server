@@ -55,7 +55,7 @@ if (apiPassword) {
 
 app.get("/", (c) => {
   return c.json({
-    name: "cc-api-server",
+    name: "claude-code-server",
     description: "Claude Code CLI REST API Server",
     version: "1.0.0",
     endpoints: [

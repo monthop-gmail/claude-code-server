@@ -2,14 +2,14 @@
 
 ## Project Overview
 
-CC API Server — REST API Server ที่ wrap Claude Code CLI ให้เป็น HTTP API. Built with Bun + Hono. Single Docker service.
+Claude Code Server — REST API Server ที่ wrap Claude Code CLI ให้เป็น HTTP API. Built with Bun + Hono. Single Docker service.
 
 ## Commands
 
 ```bash
 # Docker deployment
 docker compose up -d --build
-docker logs cc-api-server --tail 30
+docker logs claude-code-server --tail 30
 
 # Local development
 cp .env.example .env

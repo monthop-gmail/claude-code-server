@@ -1,7 +1,7 @@
 services:
   api:
     build: .
-    container_name: cc-api-server
+    container_name: claude-code-server
     ports:
       - "4096:4096"
     environment:

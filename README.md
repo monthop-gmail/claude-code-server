@@ -1,4 +1,4 @@
-# CC API Server
+# Claude Code Server
 
 REST API Server สำหรับ **Claude Code CLI** — เรียกใช้ Claude Code ผ่าน HTTP API
 
@@ -7,7 +7,7 @@ REST API Server สำหรับ **Claude Code CLI** — เรียกใช
 ```
 Client (curl / LINE bot / web app)
   ↕  HTTP REST API (port 4096)
-cc-api-server (Bun + Hono)
+claude-code-server (Bun + Hono)
   ↕  Bun.spawn(["claude", "-p", prompt, ...])
 Claude Code CLI
   ↕  ANTHROPIC_API_KEY
@@ -112,7 +112,7 @@ curl -u opencode:your-password http://localhost:4096/query ...
 docker compose up -d --build
 
 # Logs
-docker logs cc-api-server --tail 30
+docker logs claude-code-server --tail 30
 
 # Test
 curl http://localhost:4096/health
