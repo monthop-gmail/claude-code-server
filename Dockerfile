@@ -7,10 +7,9 @@ RUN apt-get update && apt-get install -y curl unzip git && \
 # Install bun globally
 RUN curl -fsSL https://bun.sh/install | BUN_INSTALL=/usr/local bash
 
-# Install Claude Code CLI globally
-RUN npm install -g @anthropic-ai/claude-code@latest
+# SDK bundles Claude Code CLI — no need: npm install -g @anthropic-ai/claude-code
 
-# Create non-root user (claude refuses --dangerously-skip-permissions as root)
+# Create non-root user (required for bypassPermissions mode)
 RUN useradd -m -s /bin/bash claude
 
 WORKDIR /app
