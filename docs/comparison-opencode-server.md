@@ -7,8 +7,9 @@
 | | claude-code-server | opencode-server |
 |---|---|---|
 | **Runtime** | Bun + Hono | Node.js + Hono |
-| **AI Engine** | Claude Code CLI (subprocess) | OpenCode built-in (native) |
-| **วิธีเรียก AI** | `Bun.spawn(["claude", "-p", ...])` | เรียก function ตรง (in-process) |
+| **AI Engine** | Claude Agent SDK → Claude Code CLI (bundled) | OpenCode built-in (native) |
+| **วิธีเรียก AI** | `query()` จาก `@anthropic-ai/claude-agent-sdk` (AsyncGenerator) | เรียก function ตรง (in-process) |
+| **Streaming** | SSE via event bus (`GET /event`) | SSE via event bus (`GET /event`) |
 | **Docker** | 1 service | 1 service |
 | **Default Port** | 4096 | 4096 |
 
@@ -16,13 +17,15 @@
 
 | Endpoint | claude-code-server | opencode-server |
 |----------|:---:|:---:|
+| `GET /event` (SSE) | O | O |
 | `POST /query` (stateless) | O | - |
 | `POST /session` | O | O |
 | `GET /session` | O | O |
+| `GET /session/:id` | O | O |
+| `GET /session/:id/message` | O | O |
 | `POST /session/:id/message` | O | O |
 | `POST /session/:id/abort` | O | O |
 | `DELETE /session/:id` | O | O |
-| `GET /session/:id/message` | - | O |
 | `PATCH /session/:id` | - | O |
 | `POST /session/:id/fork` | - | O |
 | `POST /session/:id/share` | - | O |
@@ -30,7 +33,6 @@
 | `POST /session/:id/revert` | - | O |
 | `GET /models` | O | - |
 | `GET /health` | O | O |
-| `GET /event` (SSE) | - | O |
 | `/project/*` | - | O |
 | `/pty/*` | - | O |
 | `/file/*` | - | O |
@@ -43,25 +45,42 @@
 
 | | claude-code-server | opencode-server |
 |---|---|---|
-| **Complexity** | ~200 lines, 3 files | ~2000+ lines, dozens of files |
-| **Session state** | In-memory Map | Persistent (SQLite/file) |
-| **Streaming** | ไม่มี — รอ process จบ | มี — SSE real-time events |
-| **Tool use** | Claude CLI จัดการภายใน subprocess | OpenCode จัดการ + report ผ่าน SSE |
+| **Complexity** | ~480 lines, 4 files | ~2000+ lines, dozens of files |
+| **Session state** | In-memory Map (with message history) | Persistent (SQLite/file) |
+| **Streaming** | SSE — real-time events (message, tool, delta) | SSE — real-time events (message, tool, delta) |
+| **Tool use** | Claude Agent SDK จัดการ + report ผ่าน SSE | OpenCode จัดการ + report ผ่าน SSE |
 | **Multi-provider** | Anthropic only (แก้ env ได้) | Multi-provider (OpenAI, DeepSeek, Google, etc.) |
 | **Auth** | Optional Bearer/Basic | Basic auth (username:password) |
 | **Message format** | `{ prompt: "..." }` text only | `{ parts: [{ type, text }] }` multi-part |
-| **Response format** | `{ result, cost_usd, duration_ms }` | Streaming JSON + SSE events |
-| **File operations** | ไม่มี API (CLI ทำใน subprocess) | มี `/file` API |
+| **Response format** | `{ result, cost_usd, duration_ms }` + SSE events | Streaming JSON + SSE events |
+| **File operations** | ไม่มี API (Claude Code ทำผ่าน SDK) | มี `/file` API |
 | **Terminal** | ไม่มี | มี `/pty` API |
-| **Project context** | `WORKSPACE_DIR` env (single project) | `x-opencode-directory` header (multi-project) |
+| **Project context** | `x-opencode-directory` header (multi-project) | `x-opencode-directory` header (multi-project) |
 | **Cost tracking** | Per-response + per-session | ไม่มี built-in |
+
+## SSE Events
+
+| Event | claude-code-server | opencode-server |
+|-------|:---:|:---:|
+| `server.connected` | O | O |
+| `server.heartbeat` | O | O |
+| `session.created` | O | O |
+| `session.updated` | O | O |
+| `session.deleted` | O | O |
+| `message.updated` | O | O |
+| `message.part.updated` | O | O |
+| `message.part.delta` | O | O |
+| `session.error` | - | O |
+| `permission.asked` | - | O |
+| `question.asked` | - | O |
 
 ## เปรียบเทียบแบบง่าย
 
 ```
-claude-code-server = "ตู้โทรศัพท์"
-  ส่ง prompt เข้า → รอ → ได้คำตอบออกมา
-  ง่าย, เบา, ทำงานได้เลย
+claude-code-server = "ตู้โทรศัพท์ + จอ LED"
+  ส่ง prompt → เห็น progress real-time (SSE) → ได้คำตอบ
+  ง่าย, เบา, SSE streaming, multi-project
+  ทำงานได้ทันที
 
 opencode-server = "สำนักงานเต็มรูปแบบ"
   session, streaming, file management, terminal,
@@ -72,14 +91,15 @@ opencode-server = "สำนักงานเต็มรูปแบบ"
 ## เลือกใช้อันไหน?
 
 **claude-code-server** เหมาะกับ:
-- ต้องการ API ง่ายๆ ครอบ Claude Code
+- ต้องการ API ง่ายๆ ครอบ Claude Code พร้อม streaming
 - ให้ client อื่น (LINE bot, web app) เรียกใช้ได้
-- Prototype / MVP ที่ไม่ต้องการฟีเจอร์เยอะ
+- ต้องการ SSE real-time events แต่ไม่ต้องการ feature เยอะ
 - ใช้ Anthropic API เป็นหลัก
+- Prototype / MVP ที่ deploy เร็ว
 
 **opencode-server** เหมาะกับ:
 - ต้องการ full-featured AI coding platform
-- ต้องการ streaming, file management, terminal
+- ต้องการ file management, terminal, MCP
 - ต้องการ multi-provider (OpenAI, DeepSeek, Google, etc.)
 - ต้องการ persistent sessions, sharing, forking
 - Production / enterprise use case
@@ -88,4 +108,4 @@ opencode-server = "สำนักงานเต็มรูปแบบ"
 
 - [claude-code-server](https://github.com/monthop-gmail/claude-code-server)
 - [opencode](https://github.com/AnomalyCo/opencode)
-- [claude-cli-rest-api](https://github.com/bryankthompson/claude-cli-rest-api) — Python FastAPI reference
+- [claude-agent-sdk-typescript](https://github.com/anthropics/claude-agent-sdk-typescript) — Official Claude Agent SDK
