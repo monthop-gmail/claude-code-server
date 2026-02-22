@@ -1,0 +1,22 @@
+services:
+  api:
+    build: .
+    container_name: cc-api-server
+    ports:
+      - "4096:4096"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - API_PASSWORD=${API_PASSWORD:-}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-sonnet}
+      - CLAUDE_MAX_TURNS=${CLAUDE_MAX_TURNS:-10}
+      - CLAUDE_MAX_BUDGET_USD=${CLAUDE_MAX_BUDGET_USD:-1.00}
+      - CLAUDE_TIMEOUT_MS=${CLAUDE_TIMEOUT_MS:-300000}
+      - PORT=4096
+      - WORKSPACE_DIR=/workspace
+    volumes:
+      - ${PROJECT_DIR:-./workspace}:/workspace
+      - claude-data:/home/claude/.claude
+    restart: unless-stopped
+
+volumes:
+  claude-data:
